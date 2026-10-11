@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Bac Pro - Les Composants d'un PC</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js pour la génération du PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col font-sans">
+
+    <!-- Header / Informations Élève -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <!-- Champs Élève -->
+            <div class="flex flex-wrap items-center gap-3 text-sm">
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-500">
+                    <i data-lucide="user" class="w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="studentNom" placeholder="Nom" class="bg-transparent outline-none w-28 md:w-32 font-medium" required>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-500">
+                    <input type="text" id="studentPrenom" placeholder="Prénom" class="bg-transparent outline-none w-28 md:w-32 font-medium" required>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-indigo-500">
+                    <i data-lucide="graduation-cap" class="w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="studentClasse" placeholder="Classe (ex: 1ère SN)" class="bg-transparent outline-none w-32 font-medium" required>
+                </div>
+            </div>
+
+            <!-- Bouton PDF à droite -->
+            <div class="flex items-center justify-end gap-3">
+                <button onclick="downloadPDF()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition-all duration-200 hover:shadow">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>Télécharger Résultats (PDF)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Zone principale de contenu -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6" id="quizContainer">
+        <!-- Banner Titre -->
+        <div class="bg-gradient-to-r from-indigo-600 to-violet-700 rounded-2xl p-6 text-white mb-8 shadow-md">
+            <h1 class="text-2xl md:text-3xl font-bold mb-2">Évaluation : Les 10 Composants Majeurs d'un PC</h1>
+            <p class="text-indigo-100 text-sm md:text-base">Niveau Bac Professionnel (SN / MELEC / Technicien d'Assistance)</p>
+            
+            <div class="mt-4 flex flex-wrap gap-4 text-xs font-semibold">
+                <span class="bg-emerald-500/30 border border-emerald-300/40 text-emerald-100 px-3 py-1 rounded-full">Niveau 1 : Identification (10)</span>
+                <span class="bg-amber-500/30 border border-amber-300/40 text-amber-100 px-3 py-1 rounded-full">Niveau 2 : Rôle & Caractéristiques (10)</span>
+                <span class="bg-rose-500/30 border border-rose-300/40 text-rose-100 px-3 py-1 rounded-full">Niveau 3 : Diagnostic & Connectique (10)</span>
+            </div>
+        </div>
+
+        <!-- Score / Bilan interactif -->
+        <div id="scoreBoard" class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm mb-8 hidden">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-1">Résultats du Quiz</h2>
+                    <p class="text-slate-500 text-sm" id="studentInfoResult">Élève : Non renseigné</p>
+                </div>
+                <div class="text-center bg-indigo-50 border border-indigo-100 rounded-xl px-8 py-4">
+                    <span class="text-xs uppercase font-bold text-indigo-600 block mb-1">Note Finale</span>
+                    <span id="finalScore" class="text-4xl font-extrabold text-indigo-700">0 / 30</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone des vignettes (Cartes des questions) -->
+        <div id="questionsList" class="space-y-10">
+            <!-- Injecté par JavaScript -->
+        </div>
+
+        <!-- Bouton Valider / Soumettre -->
+        <div class="mt-10 mb-16 text-center no-print">
+            <button onclick="submitQuiz()" id="submitBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg px-8 py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+                Valider et calculer la note
+            </button>
+        </div>
+    </main>
+
+    <!-- Template PDF pour impression -->
+    <div id="pdfPrintArea" class="hidden p-8 bg-white text-slate-900">
+        <div class="border-b-2 border-indigo-600 pb-4 mb-6 flex justify-between items-start">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-900">Feuille de Résultats - Quiz Composants PC</h1>
+                <p class="text-sm text-slate-600">Niveau Bac Professionnel</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm font-semibold" id="pdfDate"></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 bg-slate-100 p-4 rounded-lg mb-6 text-sm">
+            <div><strong>Nom :</strong> <span id="pdfNom"></span></div>
+            <div><strong>Prénom :</strong> <span id="pdfPrenom"></span></div>
+            <div><strong>Classe :</strong> <span id="pdfClasse"></span></div>
+        </div>
+
+        <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-lg mb-6 text-center">
+            <span class="text-sm text-indigo-700 font-semibold uppercase">Score Final Obtained</span>
+            <div class="text-3xl font-extrabold text-indigo-900 mt-1" id="pdfScore">-- / 30</div>
+        </div>
+
+        <div id="pdfSummary" class="space-y-3 text-xs">
+            <!-- Résumé synthétique injecté pour le PDF -->
+        </div>
+    </div>
+
+    <script>
+        // Data des 30 vignettes
+        const quizData = [
+            // NIVEAU 1 : Identification basique (10 questions)
+            {
+                id: 1, level: 1, component: "Processeur (CPU)",
+                question: "1. Quel composant est souvent qualifié de 'cerveau' de l'ordinateur ?",
+                options: ["Le processeur (CPU)", "La mémoire vive (RAM)", "Le disque dur (SSD)", "L'alimentation (PSU)"],
+                answer: 0,
+                explanation: "Le CPU effectue les calculs et exécute les instructions des programmes."
+            },
+            {
+                id: 2, level: 1, component: "Carte Mère",
+                question: "2. Quel composant principal interconnecte tous les autres éléments du PC ?",
+                options: ["Le boîtier", "La carte mère", "La carte graphique", "Le ventirad"],
+                answer: 1,
+                explanation: "La carte mère est le circuit imprimé central assurant la connexion de tous les composants."
+            },
+            {
+                id: 3, level: 1, component: "Mémoire Vive (RAM)",
+                question: "3. Quelle mémoire volatile conserve temporairement les données des applications en cours d'exécution ?",
+                options: ["Le ROM", "Le SSD", "La RAM", "Le Cache L3"],
+                answer: 2,
+                explanation: "La RAM conserve les données uniquement lorsque le PC est sous tension."
+            },
+            {
+                id: 4, level: 1, component: "Carte Graphique (GPU)",
+                question: "4. Quel composant traite le rendu visuel et l'affichage sur l'écran ?",
+                options: ["La carte son", "La carte réseau", "La carte graphique", "Le chipset"],
+                answer: 2,
+                explanation: "Le GPU est dédié au calcul des images 2D/3D et à l'envoi du signal vidéo."
+            },
+            {
+                id: 5, level: 1, component: "Alimentation (PSU)",
+                question: "5. Quel composant convertit le courant alternatif du secteur en courant continu pour le PC ?",
+                options: ["L'alimentation (PSU)", "Le transformateur externe", "Le condensateur", "Le régulateur"],
+                answer: 0,
+                explanation: "L'alimentation distribue les tensions (12V, 5V, 3.3V) requises par les composants."
+            },
+            {
+                id: 6, level: 1, component: "Stockage (SSD / HDD)",
+                question: "6. Quel composant permet de stocker de façon permanente vos fichiers et le système d'exploitation ?",
+                options: ["La RAM", "Le SSD ou HDD", "Le registre CPU", "Le BIOS"],
+                answer: 1,
+                explanation: "Le stockage non-volatile conserve les fichiers même une fois le PC éteint."
+            },
+            {
+                id: 7, level: 1, component: "Système de Refroidissement",
+                question: "7. Quel dispositif évite la surchauffe critique du processeur ?",
+                options: ["Le boîtier", "Le Ventirad ou Watercooling", "Le rehausseur", "La pâte thermique seule"],
+                answer: 1,
+                explanation: "Un dissipateur thermique couplé à un ventilateur (ou circuit liquide) évite le Throttling thermique."
+            },
+            {
+                id: 8, level: 1, component: "Boîtier (Tour)",
+                question: "8. Comment appelle-t-on la structure physique qui abrite et protège les composants internes ?",
+                options: ["Le châssis / boîtier", "Le socle", "L'armoire", "Le rack serveur"],
+                answer: 0,
+                explanation: "Le boîtier assure la protection, la rigidité et la circulation de l'air."
+            },
+            {
+                id: 9, level: 1, component: "Carte Réseau (NIC)",
+                question: "9. Quel composant permet la connexion filaire (Ethernet RJ45) ou sans-fil (Wi-Fi) au réseau ?",
+                options: ["La carte son", "La carte mère", "La carte réseau", "Le bus PCI"],
+                answer: 2,
+                explanation: "La carte réseau (NIC) gère les couches physiques et liaison pour communiquer sur un réseau."
+            },
+            {
+                id: 10, level: 1, component: "Carte Son",
+                question: "10. Quel composant (intégré ou dédié) transforme le signal numérique en signal audio pour le casque ?",
+                options: ["Le DAC / Carte son", "Le processeur", "Le connecteur Jack", "Le chipset audio"],
+                answer: 0,
+                explanation: "La carte son convertit le numérique en analogique (DAC) pour diffuser du son."
+            },
+
+            // NIVEAU 2 : Caractéristiques & Rôles techniques (10 questions)
+            {
+                id: 11, level: 2, component: "Processeur (CPU)",
+                question: "11. Que caractérise principalement la valeur exprimée en Gigahertz (GHz) sur un processeur ?",
+                options: ["La quantité de mémoire intégrée", "La fréquence d'horloge (vitesse de calcul)", "La consommation d'énergie", "Le nombre de cœurs"],
+                answer: 1,
+                explanation: "La fréquence en GHz indique le nombre de cycles d'instructions exécutés par seconde."
+            },
+            {
+                id: 12, level: 2, component: "Mémoire Vive (RAM)",
+                question: "12. Quelle est la principale différence technique entre de la RAM DDR4 et DDR5 ?",
+                options: ["La DDR5 consomme plus de voltage", "La DDR5 a des fréquences/débits plus élevés et un détrompeur différent", "La DDR4 est plus rapide", "La DDR5 ne s'installe que sur PC portable"],
+                answer: 1,
+                explanation: "La DDR5 offre une bande passante supérieure et possède une encoche de sécurité déplacée."
+            },
+            {
+                id: 13, level: 2, component: "Stockage (SSD)",
+                question: "13. Quel protocole de transfert permet d'obtenir les débits les plus rapides sur un SSD M.2 ?",
+                options: ["SATA III", "IDE / PATA", "NVMe (PCIe)", "USB 3.0"],
+                answer: 2,
+                explanation: "Le protocole NVMe exploite les lignes PCIe pour dépasser largement les 550 Mo/s du SATA."
+            },
+            {
+                id: 14, level: 2, component: "Carte Mère",
+                question: "14. Quel composant matériel de la carte mère conserve l'heure et la configuration du BIOS/UEFI ?",
+                options: ["Le chipset", "La pile CMOS (CR2032)", "Le socket", "Le régulateur VRM"],
+                answer: 1,
+                explanation: "La pile bouton alimente le circuit CMOS lorsque le PC est débranché du secteur."
+            },
+            {
+                id: 15, level: 2, component: "Alimentation (PSU)",
+                question: "15. Que garantit la certification '80 PLUS' sur une bloc d'alimentation ?",
+                options: ["Une puissance maximale de 800 Watts", "Un rendement énergétique d'au moins 80%", "Une compatibilité à 80% avec les boîtiers", "Une garantie de 80 mois"],
+                answer: 1,
+                explanation: "80 PLUS certifie qu'au moins 80% de l'électricité consommée est restituée au PC (moins de perte en chaleur)."
+            },
+            {
+                id: 16, level: 2, component: "Carte Graphique (GPU)",
+                question: "16. Comment appelle-t-on la mémoire vidéo dédiée présente sur une carte graphique ?",
+                options: ["SRAM", "VRAM (ex: GDDR6)", "NAND Flash", "Cache L2"],
+                answer: 1,
+                explanation: "La VRAM stocke les textures et données graphiques nécessaires au GPU."
+            },
+            {
+                id: 17, level: 2, component: "Refroidissement",
+                question: "17. Quel est le rôle principal de la pâte thermique appliquée entre le CPU et le ventirad ?",
+                options: ["Coller le processeur", "Combler les micro-imperfections pour optimiser le transfert de chaleur", "Protéger contre l'électricité statique", "Isoler la chaleur"],
+                answer: 1,
+                explanation: "La pâte élimine l'air (mauvais conducteur) entre les surfaces métalliques du CPU et du ventirad."
+            },
+            {
+                id: 18, level: 2, component: "Carte Mère",
+                question: "18. Que désigne le terme 'Socket' sur une carte mère ?",
+                options: ["L'emplacement des barrettes de RAM", "L'emplacement spécifique destiné à recevoir le processeur", "Le port pour la carte graphique", "Le connecteur d'alimentation principal"],
+                answer: 1,
+                explanation: "Le socket (ex: LGA1700, AM5) est l'embase physique et électrique adaptée au CPU."
+            },
+            {
+                id: 19, level: 2, component: "Boîtier",
+                question: "19. Quels sont les formats standards de cartes mères définissant la taille du boîtier ?",
+                options: ["ATX, Micro-ATX, Mini-ITX", "SATA, NVMe, PCIe", "DDR3, DDR4, DDR5", "Intel, AMD, Nvidia"],
+                answer: 0,
+                explanation: "ATX, Micro-ATX et Mini-ITX sont les facteurs de forme normalisés."
+            },
+            {
+                id: 20, level: 2, component: "Carte Réseau",
+                question: "20. Quelle adresse physique unique est gravée dans la puce de la carte réseau ?",
+                options: ["L'adresse IP", "L'adresse MAC", "Le masque de sous-réseau", "L'adresse DNS"],
+                answer: 1,
+                explanation: "L'adresse MAC (ex: 00:1A:2B:3C:4D:5E) identifie de façon unique la carte au niveau matériel (Couche 2)."
+            },
+
+            // NIVEAU 3 : Connectique, Diagnostic & Expertise (10 questions)
+            {
+                id: 21, level: 3, component: "Alimentation",
+                question: "21. Quel connecteur d'alimentation standard à 24 broches fournit le courant à la carte mère ?",
+                options: ["Connecteur EPS 12V", "Connecteur Molex", "Connecteur ATX 24 pins", "Connecteur PCIe 8 pins"],
+                answer: 2,
+                explanation: "Le connecteur ATX 24 broches est la prise principale d'alimentation de la carte mère."
+            },
+            {
+                id: 22, level: 3, component: "Carte Mère / Diagnostic",
+                question: "22. Au démarrage du PC, si l'affichage reste noir et que la carte mère émet une série de Bips, quel composant gère ces alerte ?",
+                options: ["Le contrôleur SATA", "Le POST du BIOS/UEFI", "Le pilote graphique", "Le système d'exploitation"],
+                answer: 1,
+                explanation: "Le POST (Power-On Self-Test) vérifie le matériel au démarrage et signale les pannes via bips ou LED."
+            },
+            {
+                id: 23, level: 3, component: "Stockage",
+                question: "23. Quelle technologie permet d'associer plusieurs disques durs pour améliorer la sécurité des données ou la vitesse ?",
+                options: ["Le RAID", "Le S.M.A.R.T.", "Le Partitionnement GPT", "Le Overclocking"],
+                answer: 0,
+                explanation: "Le RAID (ex: RAID 0, RAID 1, RAID 5) agrège plusieurs unités de stockage physiques."
+            },
+            {
+                id: 24, level: 3, component: "Processeur",
+                question: "24. Un processeur chauffe excessivement en charge et le PC s'éteint brusquement au bout de 5 minutes. Quelle est la cause probable ?",
+                options: ["Le SSD est plein", "Pâte thermique asséchée ou ventilateur CPU débranché/défaillant", "La pile CMOS est vide", "La RAM est sous-cadencée"],
+                answer: 1,
+                explanation: "L'absence de dissipation thermique provoque une sécurité thermique (Thermal Shutdown)."
+            },
+            {
+                id: 25, level: 3, component: "Carte Graphique / Connectique",
+                question: "25. Quel connecteur vidéo permet d'acheminer simultanément un signal vidéo Haute Définition ET le signal audio ?",
+                options: ["VGA (D-Sub)", "DVI-D", "HDMI ou DisplayPort", "RCA"],
+                answer: 2,
+                explanation: "L'HDMI et le DisplayPort transportent nativement les données vidéo numériques et l'audio."
+            },
+            {
+                id: 26, level: 3, component: "Carte Mère / Bus",
+                question: "26. Sur quel port d'extension à haut débit branche-t-on préférentiellement une carte graphique moderne ?",
+                options: ["Port PCI classique", "Slot PCIe x16", "Connecteur SATA Express", "Port AGP"],
+                answer: 1,
+                explanation: "Le port PCI Express x16 offre la bande passante maximale nécessaire au GPU."
+            },
+            {
+                id: 27, level: 3, component: "RAM / Diagnostic",
+                question: "27. Un utilisateur installe 16 Go de RAM, mais Windows indique '8 Go utilisables'. Quelle manipulation physique faut-il vérifier ?",
+                options: ["Le branchement de l'écran", "Le positionnement en Dual-Channel selon le manuel de la carte mère", "Le format du disque dur", "La tension de l'alimentation"],
+                answer: 1,
+                explanation: "Des barrettes mal enfichées ou installées sur de mauvais slots empêchent la détection en Dual Channel."
+            },
+            {
+                id: 28, level: 3, component: "Stockage / S.M.A.R.T.",
+                question: "28. Quel système d'auto-surveillance intégré aux SSD/HDD alerte le technicien d'une panne matérielle imminente ?",
+                options: ["S.M.A.R.T.", "CHKDSH", "DHCP", "AHCI"],
+                answer: 0,
+                explanation: "S.M.A.R.T. analyse divers indicateurs de fiabilité pour anticiper les défaillances de stockage."
+            },
+            {
+                id: 29, level: 3, component: "Processeur / TDP",
+                question: "29. Que signifie le sigle TDP (Thermal Design Power) exprimé en Watts sur une fiche produit CPU ?",
+                options: ["La vitesse maximale en mode Turbo", "L'enveloppe thermique (chaleur maximale à dissiper par le refroidisseur)", "La puissance électrique délivrée à la RAM", "La capacité de traitement vidéo"],
+                answer: 1,
+                explanation: "Le TDP dimensionne le système de refroidissement requis pour dissiper la chaleur émise."
+            },
+            {
+                id: 30, level: 3, component: "Alimentation / Modularité",
+                question: "30. Quel est l'intérêt d'une alimentation dite '100% Modulaire' dans le montage d'un PC ?",
+                options: ["Elle consomme 50% de courant en moins", "On ne branche que les câbles strictement nécessaires, optimisant l'espace et le flux d'air", "Elle fonctionne sans ventilateur", "Elle règle automatiquement le voltage des composants"],
+                answer: 1,
+                explanation: "La modularité évite les câbles inutiles accumulés dans le boîtier, facilitant le Cable Management."
+            }
+        ];
+
+        // Rendu du Quiz au chargement
+        function renderQuiz() {
+            const container = document.getElementById('questionsList');
+            container.innerHTML = '';
+
+            const levels = [
+                { num: 1, title: "Niveau 1 : Identification & Notions de Base", color: "emerald" },
+                { num: 2, title: "Niveau 2 : Caractéristiques & Rôles Techniques", color: "amber" },
+                { num: 3, title: "Niveau 3 : Diagnostic, Connectique & Expertise", color: "rose" }
+            ];
+
+            levels.forEach(lvl => {
+                // Section Header
+                const section = document.createElement('div');
+                section.className = "space-y-4";
+                
+                let badgeColor = lvl.num === 1 ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                                 lvl.num === 2 ? "bg-amber-100 text-amber-800 border-amber-300" :
+                                 "bg-rose-100 text-rose-800 border-rose-300";
+
+                section.innerHTML = `
+                    <div class="flex items-center gap-3 border-b-2 border-slate-200 pb-2 mt-8">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold border ${badgeColor}">
+                            ${lvl.title}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="level-${lvl.num}-grid"></div>
+                `;
+                container.appendChild(section);
+
+                const grid = document.getElementById(`level-${lvl.num}-grid`);
+
+                // Filtrer les questions
+                const questions = quizData.filter(q => q.level === lvl.num);
+
+                questions.forEach(q => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between";
+                    card.id = `card-q-${q.id}`;
+
+                    let optionsHTML = '';
+                    q.options.forEach((opt, idx) => {
+                        optionsHTML += `
+                            <label class="flex items-start gap-3 p-2.5 rounded-lg border border-slate-100 bg-slate-50 hover:bg-indigo-50/50 cursor-pointer transition-colors text-sm">
+                                <input type="radio" name="question_${q.id}" value="${idx}" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-slate-700">${opt}</span>
+                            </label>
+                        `;
+                    });
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vignette ${q.id}/30 • ${q.component}</span>
+                                <span id="badge-status-${q.id}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 mb-4 text-base">${q.question}</h3>
+                            <div class="space-y-2 mb-4">
+                                ${optionsHTML}
+                            </div>
+                        </div>
+                        <div id="explanation-${q.id}" class="hidden mt-3 p-3 rounded-lg bg-slate-100 text-xs text-slate-600 border-l-4 border-indigo-500">
+                            <strong>Explication :</strong> ${q.explanation}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            });
+
+            lucide.createIcons();
+        }
+
+        // Soumission et calcul des points
+        function submitQuiz() {
+            const nom = document.getElementById('studentNom').value.trim();
+            const prenom = document.getElementById('studentPrenom').value.trim();
+            const classe = document.getElementById('studentClasse').value.trim();
+
+            if (!nom || !prenom || !classe) {
+                alert("Veuillez renseigner le Nom, le Prénom et la Classe de l'élève en haut de la page avant de valider.");
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+
+            let score = 0;
+
+            quizData.forEach(q => {
+                const selected = document.querySelector(`input[name="question_${q.id}"]:checked`);
+                const card = document.getElementById(`card-q-${q.id}`);
+                const badge = document.getElementById(`badge-status-${q.id}`);
+                const exp = document.getElementById(`explanation-${q.id}`);
+
+                badge.classList.remove('hidden');
+                exp.classList.remove('hidden');
+
+                if (selected) {
+                    const userAns = parseInt(selected.value);
+                    if (userAns === q.answer) {
+                        score++;
+                        card.classList.add('border-emerald-400', 'bg-emerald-50/20');
+                        badge.innerText = "CORRECT";
+                        badge.className = "text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-300";
+                    } else {
+                        card.classList.add('border-rose-400', 'bg-rose-50/20');
+                        badge.innerText = "INCORRECT";
+                        badge.className = "text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300";
+                    }
+                } else {
+                    card.classList.add('border-amber-400', 'bg-amber-50/20');
+                    badge.innerText = "NON RÉPONDU";
+                    badge.className = "text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300";
+                }
+            });
+
+            // Affichage du score
+            const scoreBoard = document.getElementById('scoreBoard');
+            scoreBoard.classList.remove('hidden');
+            document.getElementById('finalScore').innerText = `${score} / 30`;
+            document.getElementById('studentInfoResult').innerText = `Élève : ${prenom} ${nom} (${classe})`;
+
+            // Scroll au score
+            scoreBoard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Génération du PDF
+        function downloadPDF() {
+            const nom = document.getElementById('studentNom').value.trim() || "Non renseigné";
+            const prenom = document.getElementById('studentPrenom').value.trim() || "Non renseigné";
+            const classe = document.getElementById('studentClasse').value.trim() || "Non renseigné";
+
+            // Mise à jour du template PDF
+            document.getElementById('pdfNom').innerText = nom;
+            document.getElementById('pdfPrenom').innerText = prenom;
+            document.getElementById('pdfClasse').innerText = classe;
+            document.getElementById('pdfDate').innerText = new Date().toLocaleDateString('fr-FR');
+
+            // Calcul du score si pas encore fait
+            let score = 0;
+            let summaryHTML = '';
+
+            quizData.forEach(q => {
+                const selected = document.querySelector(`input[name="question_${q.id}"]:checked`);
+                let statusText = "Non répondu";
+                let statusColor = "text-amber-600";
+
+                if (selected) {
+                    const userAns = parseInt(selected.value);
+                    if (userAns === q.answer) {
+                        score++;
+                        statusText = "Correct";
+                        statusColor = "text-emerald-600 font-bold";
+                    } else {
+                        statusText = "Incorrect";
+                        statusColor = "text-rose-600 font-bold";
+                    }
+                }
+
+                summaryHTML += `
+                    <div class="flex justify-between border-b border-slate-200 pb-1">
+                        <span><strong>Q${q.id} (${q.component}):</strong> ${q.question.substring(0, 50)}...</span>
+                        <span class="${statusColor}">${statusText}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('pdfScore').innerText = `${score} / 30`;
+            document.getElementById('pdfSummary').innerHTML = summaryHTML;
+
+            // Élément à imprimer
+            const element = document.getElementById('pdfPrintArea');
+            element.classList.remove('hidden');
+
+            const opt = {
+                margin:       10,
+                filename:     `Quiz_PC_${nom}_${prenom}_${classe}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.classList.add('hidden');
+            });
+        }
+
+        // Initialisation
+        window.onload = () => {
+            renderQuiz();
+        };
+    </script>
+</body>
+</html>
+```eof
